@@ -1,0 +1,437 @@
+---
+title: "Ohio COVID-19"
+author: "Ying-Ju Tessa Chen"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: journal
+    orientation: columns
+    social: ["facebook", "twitter", "linkedin"]
+    source_code: embed
+---
+
+<style type="text/css">
+.chart-title {  /* chart_title  */
+   font-size: 18px;
+  }
+body{ /* Normal  */
+      font-size: 16px;
+  }
+</style>
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)  ## you need this package to create dashboard
+```
+
+Basic Information
+=======================================================================
+Column  {data-width=400}
+---
+  
+### Introduction
+In this dashboard, we summarize the information from the data provided by the <a href="https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home"target="_blank">Ohio Department of Health</a>. 
+
+In this data set, there are 8 variables. 
+
+- **County**: 88 counties
+- **Sex**: Female, Male, Unknown
+- **Age Range**: 0-19, 20-29, 30-39, 40-49, 50-59, 60-69, 70-79, 80+, Unknown 
+- **Onset Date**: Illness Onset Date
+- **Date of Death**
+- **Case Count**: Confirmed Cases or CDC Expanded Case Definition
+- **Death Count**: Confirmed Deaths or CDC Expanded Death Definition
+- **Hospitalized Count**
+
+  
+```{r}
+# load necessary packages
+library(data.table)
+library(ggplot2)
+library(ggmap)
+library(plotly)
+library(plyr)
+library(chron)
+library(Hmisc)
+library(stringr)
+library(sp)
+```
+  
+```{r}
+df <- fread("https://coronavirus.ohio.gov/static/COVIDSummaryData.csv")
+df <- df[,-6]
+colnames(df) <- c("County", "Sex", "Age_Range", "Onset_Date",         
+                  "Date_Of_Death", "Case_Count",        
+                  "Death_Count", "Hospitalized_Count")
+
+# remove the last row that shows the total count and make sure the type of each variable is correct                 
+df <- as.data.frame(df[1:(nrow(df)-1),])
+df[,1:3] <- lapply(df[,1:3], factor)
+df[,4:5] <- lapply(df[,4:5], function(x)  as.Date(x, "%m/%d/%Y"))
+df[,6:8] <- lapply(df[,6:8], as.numeric)
+
+R1 <- c("Williams", "Defiance", "Paulding", "Van Wert", 
+        "Mercer", "Fulton", "Henry", "Putnam", "Allen",
+        "Auglaize", "Lucas", "Wood", "Hancock", "Ottawa",
+        "Sandusky", "Seneca", "Erie", "Huron")
+R2 <- c("Lorain", "Cuyahoga", "Geauga", "Lake", "Ashtabula")
+R3 <- c("Darke", "Preble", "Shelby", "Miami", "Montgomery", 
+        "Champaign", "Clark", "Greene")
+R4 <- c("Crawford", "Delaware", "Fairfield", "Fayette", 
+        "Franklin", "Hardin", "Knox", "Licking", "Logan",
+        "Madison", "Marion", "Morrow", "Pickaway", "Union", "Wyandot")
+R5 <- c("Richland", "Ashland", "Medina", "Wayne", "Holmes",
+        "Summit", "Stark", "Tuscarawas", "Trumbull", "Portage",
+        "Mahoning", "Columbiana", "Carroll")
+R6 <- c("Butler", "Hamilton", "Warren", "Clermont", 
+        "Clinton", "Highland", "Brown", "Adams")
+R7 <- c("Ross", "Pike", "Scioto", "Hocking", "Vinton",
+        "Jackson", "Lawrence", "Athens", "Meigs", "Gallia")
+R8 <- c("Coshocton", "Muskingum", "Perry", "Morgan",
+        "Guernsey", "Noble", "Washington", "Harrison",
+        "Belmont", "Monroe", "Jefferson")
+
+Zone1 <- c(R1, R2, R5)
+Zone2 <- c(R4, R7, R8)
+Zone3 <- c(R3, R6)
+df$Zones <- c(NA)
+df$Zones <- ifelse(df$County%in%Zone1, 1, df$Zones)
+df$Zones <- ifelse(df$County%in%Zone2, 2, df$Zones)
+df$Zones <- ifelse(df$County%in%Zone3, 3, df$Zones)
+Hospitalized_Zones <- table(df$Zones, df$Hospitalized_Count)
+Hospitalized_Zones_Cases <- apply(Hospitalized_Zones, 1, function(x) sum(x*as.numeric(colnames(Hospitalized_Zones))))
+Cases_Zones <- table(df$Zones, df$Case_Count)
+Cases_Zones_all <- apply(Cases_Zones, 1, function(x) sum(x*as.numeric(colnames(Cases_Zones))))
+Death_Zones <- table(df$Zones, df$Death_Count)
+Death_Zones_Cases <- apply(Death_Zones, 1, function(x) sum(x*as.numeric(colnames(Death_Zones))))
+```
+
+**Hospitalized Cases in Healthcare Zones**
+
+- **Zone 1 (Cleveland Area):** `r unname(Hospitalized_Zones_Cases[1])` Cases (`r round(Hospitalized_Zones_Cases[1]/Cases_Zones_all[1]*100, 2)`%)
+- **Zone 2 (Columbus Area):** `r unname(Hospitalized_Zones_Cases[2])` Cases (`r round(Hospitalized_Zones_Cases[2]/Cases_Zones_all[2]*100, 2)`%)
+- **Zone 3 (Cincinnati/Dayton):** `r unname(Hospitalized_Zones_Cases[3])` Cases (`r round(Hospitalized_Zones_Cases[3]/Cases_Zones_all[3]*100, 2)`%)
+
+**Death Cases in Healthcare Zones**
+
+- **Zone 1 (Cleveland Area):** `r unname(Death_Zones_Cases[1])` Cases (`r round(Death_Zones_Cases[1]/Cases_Zones_all[1]*100, 2)`%)
+- **Zone 2 (Columbus Area):** `r unname(Death_Zones_Cases[2])` Cases (`r round(Death_Zones_Cases[2]/Cases_Zones_all[2]*100, 2)`%)
+- **Zone 3 (Cincinnati/Dayton):** `r unname(Death_Zones_Cases[3])` Cases (`r round(Death_Zones_Cases[3]/Cases_Zones_all[3]*100, 2)`%)
+
+**Source:** <a href="https://www.cleveland.com/open/2020/04/govmike-dewine-announces-that-ohioans-are-now-in-1-of-3-hospital-zones-for-coronavirus-treatment.html"target="_blank">cleveland.com</a>. 
+
+<font size="2" color="#ff4d4d"> **Note:** </font> 
+
+1. All data displayed are based on the date of illness onset or the earliest known date associated with the case. All results reported are subject to change depend on the information provided by Ohio Department of Health.
+
+2. The total tested cases in Ohio includes testing conducted on Ohio residents and voluntarily reported to the Ohio Department of Health. 
+
+
+Column  {data-width=600}
+---
+
+```{r}
+all_dates <- names(table(df$Onset_Date))
+latest_date <- sort(df$Onset_Date, decreasing = TRUE)[1]
+x <- readLines('https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home')
+location <- grep('Number of ICU Admissions',x)
+ICU <-  as.numeric(gsub(",", "", gsub(" ", "", x[(location-3)])))
+tested <- 388468
+```
+
+### Summary Statistics
+**Last Updated: `r date()` EST**
+
+- **Total Tested Cases in Ohio**: `r format(tested, scientific=F, big.mark=",")`
+- **Number of Confirmed Cases**: `r paste(format(sum(df$Case_Count), scientific=F, big.mark=","), "(", round(sum(df$Case_Count)/tested*100, 2), "% of total tested cases in Ohio)")`
+- **Number of Hospitalizations**: `r format(sum(df$Hospitalized_Count), big.mark=",")`
+- **Number of ICU Admissions**: `r format(ICU, big.mark=",")`
+- **Number of Deaths**: `r format(sum(df$Death_Count), big.mark=",")`
+- **Death Rate in Ohio**: `r paste0(round(sum(df$Death_Count)/sum(df$Case_Count)*100, 2), "%")`
+
+### Distribution of Confirmed Cases by Age
+
+```{r}
+find_cases <- function(var1, var2){
+  cases <- table(var1, var2)
+  all_cases <- apply(cases, 1, function(x) sum(x*as.numeric(colnames(cases))))
+  return(all_cases)
+}
+AGE_count <- find_cases(df$Age_Range, df$Case_Count)
+AGE <- data.frame(age=AGE_count, percent=paste0(round(AGE_count/sum(AGE_count)*100, 2), "%"))
+rownames(AGE) <- names(AGE_count)
+colnames(AGE) <- c("Count", "Percent")
+DT::datatable(t(AGE), options = list(
+ columnDefs = list(list(className = 'dt-center', targets = 0:nrow(AGE)))
+))
+```
+
+
+### Distribution of Confirmed Cases by Sex
+
+```{r}
+Sex_count <- find_cases(df$Sex, df$Case_Count)
+SEX <- data.frame(sex=Sex_count, percent=paste0(round(Sex_count/sum(Sex_count)*100, 2), "%"))
+rownames(SEX) <- names(Sex_count)
+colnames(SEX) <- c("Count", "Percent")
+DT::datatable(t(SEX), options = list(
+ columnDefs = list(list(className = 'dt-center', targets = 0:nrow(SEX)))
+))
+```
+
+Daily Cases
+=======================================================================
+
+Column {.tabset data-width=500}
+-----------------------------------------------------------------------
+
+```{r}
+date_sum <- table(df$Onset_Date, df$Case_Count)
+daily_cases <- apply(date_sum, 1, function(x) sum(x*as.numeric(colnames(date_sum))))
+
+monthly <- data.frame(dates=as.Date(all_dates, "%Y-%m-%d"), cases=daily_cases)
+rownames(monthly) <- c()
+
+# the following function is from "https://stackoverflow.com/questions/7919998/basic-calendar-display-in-r"
+
+cal <- function(month, year){
+      ld <- seq.dates( from=julian(month,1,year), length=2, by='months')[2]-1
+      days <- seq.dates( from=julian(month,1,year), to=ld)
+      tmp <- month.day.year(days)
+      wd <- do.call(day.of.week, tmp)
+      cs <- cumsum(wd == 0)
+      if(cs[1] > 0) cs <- cs - 1
+      nr <- max(cs) + 1
+      par(oma=c(0.1,0.1,4.6,0.1))
+      par(mfrow=c(nr,7))
+      par(mar=c(0,0,0,0))
+      for(i in seq_len(wd[1])){ 
+        plot.new()
+        #box()
+      }
+      day.name <- c('Sun','Mon','Tues','Wed','Thur','Fri','Sat')
+      for(i in tmp$day){
+        plot.new()
+        box()
+        text(0,1, i, adj=c(0,1))
+        if(i < 8) mtext( day.name[wd[i]+1], line=0.5,
+                         at=grconvertX(0.5,to='ndc'), outer=TRUE ) 
+      }
+      mtext(month.name[month], line=2.5, at=0.5, cex=1.75, outer=TRUE)
+}
+
+week_days <- function(x){
+  days <- c(1:7)
+  names(days) <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+  days_index <- which(names(days)==x)
+  return(unname(days[days_index]))
+}
+  
+```
+
+```{r , message=FALSE, echo=FALSE, cache=TRUE, error=FALSE, results='asis'}
+
+for (i in month(latest_date):2){
+    df_m <- monthly[which(month(monthly$dates)==i),]
+    first_day <- weekdays(as.Date(paste0("2020-", i, "-01"), "%Y-%m-%d"))
+    C_matrix <- matrix(NA, ncol=3, nrow=monthDays(as.Date(paste0("2020-", i, "-01"))))
+    total_days <- week_days(first_day):(week_days(first_day)+monthDays(as.Date(paste0("2020-", i, "-01")))-1)
+    C_matrix[,1] <- ceiling(total_days/7)
+    C_matrix[,2] <- total_days%%7
+    C_matrix[,2] <- ifelse(C_matrix[,2]==0, 7, C_matrix[,2])
+    for (j in 1:nrow(df_m)){
+      C_matrix[mday(df_m$dates[j]),3] <- df_m$cases[j]
+    }
+
+    cat('### ', month.abb[i],' \n')
+    cat("We show the distribution of confirmed cases based on the date of illness onset or the earliest known date associated with the case.")
+    cal(i, 2020)
+    for (k in mday(df_m$dates)){
+        par(mfg=C_matrix[k,1:2])
+        text(.5, .5, as.character(C_matrix[k,3]), cex=2)
+    }
+    cat('\n \n')
+}
+```
+
+Column {.tabset data-width=500}
+-----------------------------------------------------------------------
+
+### Distribution of Daily Cases based on Illness Onset Date
+
+```{r}
+D <- data.frame(Dates=names(daily_cases), cases=unname(daily_cases))
+
+p_dates <- plot_ly(D, x=~Dates, y=~cases, type="bar", text=as.character(cumsum(daily_cases)), name="", 
+hovertemplate = paste('%{x}', '<br>Daily Cases: %{y}', 
+                      '<br>Total Cases: %{text}'))
+                   
+p_dates <- p_dates %>% layout(xaxis=list(title="Date"), yaxis=list(title="Daily Cases"), uniformtext=list(minsize=12,mode='hide')) %>% config(displayModeBar = F)
+
+p_dates
+```
+
+### Distribution of New Cases Reported Daily
+```{r}
+df_previous <- read.csv("C:/Users/Tessa/Documents/GitHub/Ohio_covid19.github.io/confirmed cases.csv")
+colnames(df_previous) <- c("Date", "Confirmed", "Diff_Confirmed", "Death", "Diff_Death")
+df_previous$Date <- as.Date(df_previous$Date, format="%m/%d/%Y")
+Diff_cases <- data.frame(Dates=as.factor(df_previous$Date), cases=df_previous$Diff_Confirmed)
+
+# The number of new cases reported each day
+time_confirmed_cases <- plot_ly(Diff_cases, x=~Dates, y=~cases, type ="bar", text=as.character(df_previous$Diff_Death), name="", hovertemplate=paste("%{x}", "<br>Confirmed Cases: %{y}","<br>Death Cases: %{text}"))
+
+time_confirmed_cases <- time_confirmed_cases %>% layout(xaxis=list(title="Date"), yaxis=list(title="Daily Reported New Cases"), uniformtext=list(minsize=12,mode='hide')) %>% config(displayModeBar = F)
+
+time_confirmed_cases
+```
+
+Distribution by Counties
+=======================================================================
+
+```{r}
+
+county_cases_all <- find_cases(df$County, df$Case_Count)
+county_hospitalized <- find_cases(df$County, df$Hospitalized_Count)
+county_death <- find_cases(df$County, df$Death_Count)
+df_ohio_cases <- data.frame(county=names(county_cases_all), confirmed_count=county_cases_all, hospitalized_count=county_hospitalized, death_count=county_death)                     
+rownames(df_ohio_cases) <- c()
+usa <- map_data("county")  # get basic map data for all USA counties 
+oh <- subset(usa, region == "ohio")  # subset to counties in Ohio 
+oh$county = str_to_title(oh$subregion)
+my.df = merge(oh, df_ohio_cases, by = "county", all.x = TRUE, 
+              sort = FALSE)
+#my.df$count <- ifelse(is.na(my.df$count), 0, my.df$count)
+my.df = my.df[order(my.df$order), ]
+
+# Here we create a function that returns a county-named list of label points
+getLabelPoint <- function(county){Polygon(county[c('long', 'lat')])@labpt}
+
+# Returns list
+centroids = by(oh, oh$county, getLabelPoint) 
+
+# Convert to Data Frame
+centroids2 <- do.call("rbind.data.frame", centroids) 
+centroids2$county = rownames(centroids)
+
+# make an appropriate column names
+names(centroids2) <- c('clong', 'clat', "county") 
+
+# merge the county location (long, lat) with df_ohio_cases data
+centroids3 <- merge(centroids2, df_ohio_cases, by="county", all.x=TRUE, sort=FALSE)
+centroids3$confirmed_count <- ifelse(is.na(centroids3$confirmed_count), 0, centroids3$confirmed_count)
+centroids3$hospitalized_count <- ifelse(is.na(centroids3$hospitalized_count), 0, centroids3$hospitalized_count)
+centroids3$death_count <- ifelse(is.na(centroids3$death_count), 0, centroids3$death_count)
+#centroids3$label <- paste0(centroids3$county,": ", centroids3$count, " Cases")
+
+g <- ggplot(centroids3, aes(x = clong, y = clat, group = 1, 
+                              text = paste0(county,":", 
+                                           "<br>", confirmed_count, " comfired cases",
+                                           "<br>", hospitalized_count, " hospitalized cases",
+                                           "<br>", death_count, " death cases"),
+))
+g <- g + geom_polygon(data=my.df, 
+                       aes(x=long, y=lat, group=group, fill = confirmed_count),
+                       color="black", size = 0.2) +
+  geom_text(data=centroids3, aes(x = clong, y = clat, label = county), color = "black", size = 4)+
+  scale_fill_continuous(name="Confirmed Cases", low = "lightblue", 
+                        high = "darkblue",limits = c(0,max(my.df$confirmed_count)), na.value = "grey50") +
+  
+  labs(title="Confirmed / Hospitalized / Death Cases in Ohio") +  theme(legend.position = "none", axis.title.x=element_blank(), axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(), axis.title.y=element_blank(),
+        axis.text.y =element_blank(), axis.ticks.y=element_blank())
+
+ggplotly(g, tooltip = "text") %>% layout(autosize = F, width = 800, height = 800) 
+
+```
+
+Distribution by Age
+=======================================================================
+
+Column {data-width=333}
+---
+
+### Distribution of Confirmed Cases by the Age Range
+
+**We excluded `r AGE_count["Unknown"]` people whose age is unknown.**
+
+\
+
+```{r}
+# remove the cases for which the age range is "Unknown"
+if (length(which(df$Age_Range=="Unknown"))==0){
+  df1 <- df
+}else{
+  df1 <- df[-which(df$Age_Range=="Unknown"),]
+}
+
+df1$Age_Range <- factor(df1$Age_Range)
+# find counts and relative counts (%) in each age range
+Age_Dist <- table(df1$Age_Range, df1$Case_Count)
+n_c <- sum(apply(Age_Dist, 1, function(x) sum(x*as.numeric(colnames(Age_Dist)))))
+Age_Percent <- round(apply(Age_Dist, 1, function(x) sum(x*as.numeric(colnames(Age_Dist))))/n_c*100,2)
+
+# form a data frame for the summary information of AGE
+df_age <- data.frame(Age_Range=levels(df1$Age_Range), Percent_Cases=Age_Percent, text1=paste0(Age_Percent, "%", "<br>", unname(find_cases(df1$Age_Range, df1$Case_Count))))
+
+# obtatin the bar chart for the distribution of Ohio's confirmed cases by the Age Range 
+p_age <- plot_ly(df_age, x=~Age_Range, y=~Percent_Cases, type="bar",
+                 text = df_age$text1, textposition = 'outside', hoverinfo = "text")%>% config(displayModeBar = F)
+p_age <- p_age %>% layout(xaxis=list(title="Age Range"), yaxis=list(title="Percent of Confirmed Cases"))
+
+p_age %>% layout(autosize = F, width = 450, height = 650, yaxis = list(range = c(0, 52)), font = list(size = 15))
+```
+
+
+Column {data-width=333}
+---
+
+### Distribution of Hospitalized Cases by Age Range
+
+**We excluded `r AGE_count["Unknown"]` people whose age is unknown.**
+
+\
+
+```{r}
+# find Hospitalized counts and relative counts (%) in each age range
+Age_Dist_Hospitalized <- table(df1$Age_Range, df1$Hospitalized_Count)
+n_h <- sum(apply(Age_Dist_Hospitalized, 1, function(x) sum(x*as.numeric(colnames(Age_Dist_Hospitalized)))))
+Age_Percent_Hospitalized <- round(apply(Age_Dist_Hospitalized, 1, function(x) sum(x*as.numeric(colnames(Age_Dist_Hospitalized))))/n_h*100,2)
+
+# form a data frame for the summary information of AGE
+df_age_Hospitalized <- data.frame(Age_Range=levels(df1$Age_Range), Percent_Cases=Age_Percent_Hospitalized, text1=paste0(Age_Percent_Hospitalized, "%", "<br>", unname(find_cases(df1$Age_Range, df1$Hospitalized_Count))))
+
+# obtatin the bar chart for the distribution of Ohio's confirmed cases by the Age Range 
+p_age_Hospitalized <- plot_ly(df_age_Hospitalized, x=~Age_Range, y=~Percent_Cases, type="bar",
+                       text = df_age_Hospitalized$text1, textposition = 'outside', hoverinfo = "text")%>% config(displayModeBar = F)
+p_age_Hospitalized <- p_age_Hospitalized %>% layout(xaxis=list(title="Age Range"), yaxis=list(title="Percent of Hospitalized Cases"))
+
+p_age_Hospitalized %>% layout(autosize = F, width = 450, height = 650, yaxis = list(range = c(0, 52)), font = list(size = 15))
+```
+
+
+Column {data-width=333}
+---
+
+### Distribution of Death Cases by Age Range
+
+**We excluded `r AGE_count["Unknown"]` people whose age is unknown.**
+
+\
+
+```{r}
+# find death counts and relative counts (%) in each age range
+Age_Dist_Death <- table(df1$Age_Range, df1$Death_Count)
+n_death <- sum(apply(Age_Dist_Death, 1, function(x) sum(x*as.numeric(colnames(Age_Dist_Death)))))
+Age_Percent_Death <- round(apply(Age_Dist_Death, 1, function(x) sum(x*as.numeric(colnames(Age_Dist_Death))))/n_death*100,2)
+
+# form a data frame for the summary information of AGE
+df_age_death <- data.frame(Age_Range=levels(df1$Age_Range), Percent_Cases=Age_Percent_Death, text1=paste0(Age_Percent_Death, "%", "<br>", unname(find_cases(df1$Age_Range, df1$Death_Count))))
+
+# obtatin the bar chart for the distribution of Ohio's confirmed cases by the Age Range 
+p_age_death <- plot_ly(df_age_death, x=~Age_Range, y=~Percent_Cases, type="bar",
+                 text = df_age_death$text1, textposition = 'outside', hoverinfo = "text")%>% config(displayModeBar = F)
+p_age_death <- p_age_death %>% layout(xaxis=list(title="Age Range"), yaxis=list(title="Percent of Death Cases"))
+
+p_age_death %>% layout(autosize = F, width = 450, height = 650, yaxis = list(range = c(0, 55)), font=list(size = 15))
+
+```
