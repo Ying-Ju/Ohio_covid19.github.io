@@ -26,7 +26,7 @@ add_death <- sum(df$Death_Count) - df_previous$Death[nrow(df_previous)]
 myDF <- data.frame(date=format(Sys.Date(), "%m/%d/%Y"), Confirmed=sum(daily_cases), Diff_Confirmed=add_confirmed, Death=sum(df$Death_Count), Diff_Death=add_death)
 write.table(myDF, paste0(path, "/confirmed cases.csv"), sep = ",", col.names = F, row.names = F, append = T)
 
-myDF <- data.frame(date=format(Sys.Date()-1, "%m/%d/%Y"), Confirmed=105426, Diff_Confirmed=1178, Death=3755, Diff_Death=21)
+myDF <- data.frame(date=format(Sys.Date()-2, "%m/%d/%Y"), Confirmed=113046, Diff_Confirmed=1043, Death=3955, Diff_Death=26)
 
 #====================================================================================================================================
 
