@@ -28,7 +28,7 @@ write.table(myDF, paste0(path, "/confirmed cases.csv"), sep = ",", col.names = F
 
 myDF <- data.frame(date=format(Sys.Date()-3, "%m/%d/%Y"), Confirmed=145850, Diff_Confirmed=685, Death=4635, Diff_Death=12)
 myDF <- data.frame(date=format(Sys.Date()-2, "%m/%d/%Y"), Confirmed=146753, Diff_Confirmed=903, Death=4687, Diff_Death=52)
-myDF <- data.frame(date=format(Sys.Date()-1, "%m/%d/%Y"), Confirmed=147744, Diff_Confirmed=991, Death=4715, Diff_Death=28)
+myDF <- data.frame(date=format(Sys.Date()-1, "%m/%d/%Y"), Confirmed=177991, Diff_Confirmed=2148, Death=5054, Diff_Death=16)
 
 #====================================================================================================================================
 
